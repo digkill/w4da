@@ -1,0 +1,78 @@
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 20% 5%;
+    --foreground: 40 30% 96%;
+    --card: 240 18% 8%;
+    --card-foreground: 40 30% 96%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 12% 14%;
+    --secondary-foreground: 40 30% 96%;
+    --muted: 240 10% 16%;
+    --muted-foreground: 240 8% 62%;
+    --accent: 350 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 12% 18%;
+    --input: 240 12% 18%;
+    --ring: 24 95% 53%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-display antialiased;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    @apply bg-primary/30;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 24px hsl(var(--primary) / 0.55);
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+  }
+  .clip-slant {
+    clip-path: polygon(0 0, 100% 0, 100% 88%, 0 100%);
+  }
+}
