@@ -111,7 +111,7 @@ export class Game {
     this.torch.diffuse = Color3.FromHexString("#ffb15a");
     this.torch.intensity = this.torchBase;
     this.torch.range = 26;
-    this.torch.parent = this.player.rig.root;
+    this.torch.parent = this.player.root;
     const events = {
       onPlayerHit: (dmg: number) => this.damagePlayer(dmg),
       onKill: (pts: number) => {
@@ -353,6 +353,7 @@ export class Game {
     if (this.health <= 0) {
       this.status = "dead";
       this.deadTimer = 0;
+      this.player.setDead();
       this.emit();
     }
   }

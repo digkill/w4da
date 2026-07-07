@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Heart, Skull, Trophy, Clock, Zap, Play, RotateCcw, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { GameStats } from "@/game/types";
+import { HeroSelect } from "./HeroSelect";
+import { HEROES } from "@/data/heroes";
 
 function fmtTime(s: number) {
   const m = Math.floor(s / 60);
@@ -20,6 +23,8 @@ interface Props {
 
 export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
   const hpPct = (stats.health / stats.maxHealth) * 100;
+  const [heroId, setHeroId] = useState(HEROES[0].id);
+  const selectedHeroName = HEROES.find((h) => h.id === heroId)?.name ?? "";
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
@@ -76,27 +81,30 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
       {/* Overlays */}
       {stats.status === "menu" && (
         <Overlay>
-          <Badge variant="accent" className="mb-4 animate-pulse-glow">
-            Сурвайвал · вид как в Dota 2
-          </Badge>
-          <h2 className="mb-3 text-4xl font-bold text-glow sm:text-6xl">
-            Оседлай коня.<br />
-            <span className="text-primary">Коси орду.</span>
-          </h2>
-          <p className="mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
-            Скачи по проклятому полю и отбивайся из пулемёта от нескончаемых
-            зомби-цыган. Продержись как можно дольше.
-          </p>
-          <button
-            onClick={onStart}
-            className="pointer-events-auto group relative inline-flex items-center gap-3 rounded-2xl bg-primary px-12 py-6 text-2xl font-bold uppercase tracking-wide text-primary-foreground shadow-2xl shadow-primary/50 transition-transform hover:scale-105 active:scale-95 animate-pulse-glow sm:text-3xl"
-          >
-            <Play className="h-8 w-8 fill-current" />
-            Играть
-          </button>
-          <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-            Клик по земле — движение (как в Dota 2) · пулемёт стреляет сам
-          </p>
+          <div className="flex max-h-full flex-col items-center gap-5 overflow-y-auto py-6">
+            <Badge variant="accent" className="animate-pulse-glow">
+              Сурвайвал · вид как в Dota 2
+            </Badge>
+            <h2 className="text-3xl font-bold text-glow sm:text-5xl">
+              Оседлай коня. <span className="text-primary">Коси орду.</span>
+            </h2>
+
+            <div className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Выбери героя
+            </div>
+            <HeroSelect selectedId={heroId} onSelect={setHeroId} />
+
+            <button
+              onClick={onStart}
+              className="pointer-events-auto group relative mt-1 inline-flex items-center gap-3 rounded-2xl bg-primary px-12 py-5 text-2xl font-bold uppercase tracking-wide text-primary-foreground shadow-2xl shadow-primary/50 transition-transform hover:scale-105 active:scale-95 animate-pulse-glow sm:text-3xl"
+            >
+              <Play className="h-8 w-8 fill-current" />
+              Играть за {selectedHeroName}
+            </button>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+              Клик по земле — движение (как в Dota 2) · пулемёт стреляет сам
+            </p>
+          </div>
         </Overlay>
       )}
 
