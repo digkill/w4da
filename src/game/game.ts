@@ -41,6 +41,7 @@ export class Game {
   private kills = 0;
   private timeSurvived = 0;
   private hurtFlash = 0;
+  private deadTimer = 0;
 
   private listener?: StatsListener;
   private bubbleListener?: BubbleListener;
@@ -226,15 +227,27 @@ export class Game {
     this.emit();
   }
 
-  restart() {
+  private resetState() {
     this.health = MAX_HEALTH;
     this.score = 0;
     this.kills = 0;
     this.timeSurvived = 0;
     this.hurtFlash = 0;
+    this.deadTimer = 0;
     this.player.reset();
     this.enemies.reset();
+  }
+
+  restart() {
+    this.resetState();
     this.status = "playing";
+    this.emit();
+  }
+
+  /** Called ~2s after death: clears the field and shows the start menu again. */
+  returnToMenu() {
+    this.resetState();
+    this.status = "menu";
     this.emit();
   }
 
@@ -250,6 +263,7 @@ export class Game {
     this.hurtFlash = 1;
     if (this.health <= 0) {
       this.status = "dead";
+      this.deadTimer = 0;
       this.emit();
     }
   }
@@ -280,6 +294,11 @@ export class Game {
         this.emitTimer = 0;
         this.emit();
       }
+    }
+
+    if (this.status === "dead") {
+      this.deadTimer += dt;
+      if (this.deadTimer >= 2) this.returnToMenu();
     }
 
     this.hurtFlash = Math.max(0, this.hurtFlash - dt * 2);

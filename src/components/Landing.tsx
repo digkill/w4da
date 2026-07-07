@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { GameCanvas } from "@/components/game/GameCanvas";
+import { Phrasebook } from "@/components/Phrasebook";
 
 export function Landing() {
   const scrollToPlay = () =>
@@ -156,6 +157,9 @@ export function Landing() {
           </Card>
         </div>
       </section>
+
+      {/* PHRASEBOOK */}
+      <Phrasebook />
 
       {/* LORE */}
       <section id="lore" className="container scroll-mt-20 py-20">

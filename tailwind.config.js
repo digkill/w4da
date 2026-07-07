@@ -61,11 +61,19 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-10px)" },
         },
+        // Death screen: fade in, hold, then fade out — matches the 2s auto-return.
+        death: {
+          "0%": { opacity: "0", transform: "translateY(16px)" },
+          "12%": { opacity: "1", transform: "translateY(0)" },
+          "70%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "0", transform: "translateY(-8px)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both",
         "pulse-glow": "pulse-glow 2.4s ease-in-out infinite",
         float: "float 6s ease-in-out infinite",
+        death: "death 2s ease-in-out both",
       },
     },
   },

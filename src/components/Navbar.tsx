@@ -17,7 +17,7 @@ export function Navbar() {
         <nav className="hidden items-center gap-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground md:flex">
           <a href="#play" className="transition-colors hover:text-foreground">Играть</a>
           <a href="#features" className="transition-colors hover:text-foreground">Фишки</a>
-          <a href="#controls" className="transition-colors hover:text-foreground">Управление</a>
+          <a href="#phrasebook" className="transition-colors hover:text-foreground">Разговорник</a>
           <a href="#lore" className="transition-colors hover:text-foreground">Лор</a>
         </nav>
 

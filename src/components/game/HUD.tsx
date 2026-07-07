@@ -69,7 +69,7 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
       {/* Crosshair */}
       {stats.status === "playing" && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-          WASD / стик — движение · пулемёт стреляет сам
+          WASD / стрелки / стик — движение · пулемёт стреляет сам
         </div>
       )}
 
@@ -90,6 +90,9 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
           <Button size="lg" className="pointer-events-auto animate-pulse-glow" onClick={onStart}>
             <Play className="h-5 w-5" /> Играть
           </Button>
+          <p className="mt-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+            Управление: WASD или стрелки · на телефоне — тач-стик
+          </p>
         </Overlay>
       )}
 
@@ -103,7 +106,7 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
       )}
 
       {stats.status === "dead" && (
-        <Overlay>
+        <Overlay anim="animate-death">
           <Skull className="mb-4 h-14 w-14 text-destructive" />
           <h2 className="mb-2 text-4xl font-bold text-destructive sm:text-5xl">
             Тебя сожрали
@@ -162,9 +165,20 @@ function ResultStat({ label, value }: { label: string; value: React.ReactNode })
   );
 }
 
-function Overlay({ children }: { children: React.ReactNode }) {
+function Overlay({
+  children,
+  anim = "animate-fade-up",
+}: {
+  children: React.ReactNode;
+  anim?: string;
+}) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/70 via-black/50 to-black/80 px-6 text-center backdrop-blur-sm animate-fade-up">
+    <div
+      className={cn(
+        "absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/70 via-black/50 to-black/80 px-6 text-center backdrop-blur-sm",
+        anim,
+      )}
+    >
       {children}
     </div>
   );
