@@ -233,6 +233,24 @@ export class ZombieManager {
       model.parent = root;
       root.scaling.setAll(rt.scale);
 
+      // Contrast pass: lift materials out of pure black and add a silhouette
+      // outline so mobs read clearly against the dark night scene.
+      model.getChildMeshes().forEach((m) => {
+        m.renderOutline = true;
+        m.outlineColor = type.boss
+          ? Color3.FromHexString("#ff2a2a")
+          : Color3.FromHexString("#00e0b0");
+        m.outlineWidth = 0.02;
+        const mm = m.material as unknown as {
+          emissiveColor?: Color3;
+          emissiveIntensity?: number;
+        } | null;
+        if (mm && mm.emissiveColor) {
+          mm.emissiveColor = Color3.FromHexString(type.boss ? "#2a1010" : "#182028");
+          if ("emissiveIntensity" in mm) mm.emissiveIntensity = 1;
+        }
+      });
+
       const anims = new Map<string, AnimationGroup>();
       inst.animationGroups.forEach((g) => {
         g.stop();

@@ -8,6 +8,7 @@ import {
   TransformNode,
   SceneLoader,
   AnimationGroup,
+  type GlowLayer,
 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 import { buildBlobShadow } from "./factory";
@@ -18,7 +19,7 @@ import shotgunUrl from "../assets/shotgun.glb?url";
 const ARENA_RADIUS = 88;
 const MOVE_SPEED = 8.5;
 const TURN_LERP = 12;
-const HERO_HEIGHT = 2.7;
+const HERO_HEIGHT = 4.05; // 2.7 × 1.5
 
 // --- Shotgun feel ---
 const FIRE_INTERVAL = 0.5; // slow, punchy
@@ -26,11 +27,15 @@ const PELLETS = 8; // buckshot
 const SPREAD = 0.32; // cone half-angle (rad)
 const AIM_RANGE = 24;
 
-// --- Shotgun placement (tweak to taste; local offsets are in world units) ---
+// --- Shotgun placement (tweak to taste) ---
 const HERO_FACING_OFFSET = 0; // flip by Math.PI if the hero faces backwards
-const SHOTGUN_POS = new Vector3(0.32, 1.45, 0.5); // right hand, chest height, forward
-const SHOTGUN_ROT = new Vector3(0, Math.PI / 2, 0);
+// Attached to the RightHand bone. These are in the bone's local space — nudge
+// the grip into the palm and rotate so the barrel points forward.
+const SHOTGUN_GRIP = new Vector3(0, 0, 0);
+const SHOTGUN_ROT = new Vector3(0, Math.PI, 0); // +90° horizontal turn
 const SHOTGUN_SCALE = 1.6;
+// Fallback offset if the hand bone can't be found (parented to the body).
+const SHOTGUN_POS = new Vector3(0.32, 1.45, 0.5);
 const MUZZLE_HEIGHT = 1.45;
 const MUZZLE_FORWARD = 1.15;
 
@@ -46,8 +51,10 @@ export class Player {
   private animGroups: AnimationGroup[] = [];
   private current = "";
   private fireTimer = 0;
+  private shootHold = 0;
   private flash: Mesh;
   private flashLife = 0;
+  private glow: GlowLayer | null = null;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -69,6 +76,11 @@ export class Player {
     this.load();
   }
 
+  /** The scene glow layer — hero meshes are excluded so they never look ghostly. */
+  setGlow(glow: GlowLayer) {
+    this.glow = glow;
+  }
+
   private async load() {
     try {
       // Hero
@@ -86,22 +98,60 @@ export class Player {
       this.animGroups = inst.animationGroups;
       this.animGroups.forEach((g) => g.stop());
 
+      const skeleton = inst.skeletons[0];
+      const handBone = skeleton?.bones.find((bn) => bn.name === "RightHand");
+      const skinned = model.getChildMeshes().find((m) => !!m.skeleton) as Mesh | undefined;
+
+      // Force the hero fully opaque (some glTF materials import with alpha blend).
+      model.getChildMeshes().forEach((m) => {
+        m.visibility = 1;
+        m.hasVertexAlpha = false;
+        // Exclude from the glow layer so the hero never renders washed-out/ghostly.
+        this.glow?.addExcludedMesh(m as Mesh);
+        const mm = m.material as unknown as {
+          alpha?: number;
+          transparencyMode?: number | null;
+          needDepthPrePass?: boolean;
+          forceDepthWrite?: boolean;
+          useAlphaFromAlbedoTexture?: boolean;
+          albedoTexture?: { hasAlpha: boolean };
+          diffuseTexture?: { hasAlpha: boolean };
+        } | null;
+        if (!mm) return;
+        mm.alpha = 1;
+        mm.transparencyMode = 0; // OPAQUE
+        mm.needDepthPrePass = false;
+        mm.forceDepthWrite = true;
+        if ("useAlphaFromAlbedoTexture" in mm) mm.useAlphaFromAlbedoTexture = false;
+        if (mm.albedoTexture) mm.albedoTexture.hasAlpha = false;
+        if (mm.diffuseTexture) mm.diffuseTexture.hasAlpha = false;
+      });
+
       // Ground blob shadow (counter-scaled so it stays a fixed world size)
       const shadow = buildBlobShadow(this.scene, 2.4 / scale);
       shadow.parent = this.root;
       shadow.position.y = (0.02 - this.rootYOffset) / scale; // world y ~0.02 (at feet)
 
-      // Shotgun (static mesh) — held in front, counter-scaled off the hero scale
+      // Shotgun (static mesh) — placed into the hero's RIGHT HAND bone.
       const gun = await SceneLoader.LoadAssetContainerAsync(shotgunUrl, "", this.scene, null, ".glb");
       const gunInst = gun.instantiateModelsToScene((n) => n, false);
       const gunRoot = gunInst.rootNodes[0] as TransformNode;
       const gb = gunRoot.getHierarchyBoundingVectors(true);
       const gunH = Math.max(gb.max.x - gb.min.x, gb.max.y - gb.min.y, gb.max.z - gb.min.z) || 1;
-      const gunWorldScale = SHOTGUN_SCALE / gunH; // normalize then apply desired size
-      gunRoot.parent = this.root;
-      gunRoot.scaling.setAll(gunWorldScale / scale);
-      gunRoot.position.set(SHOTGUN_POS.x / scale, SHOTGUN_POS.y / scale, SHOTGUN_POS.z / scale);
-      gunRoot.rotation = SHOTGUN_ROT.clone();
+      const gunWorldScale = SHOTGUN_SCALE / gunH; // normalize, then apply desired size
+
+      if (handBone && skinned) {
+        gunRoot.attachToBone(handBone, skinned);
+        gunRoot.scaling.setAll(gunWorldScale / scale);
+        gunRoot.position.copyFrom(SHOTGUN_GRIP);
+        gunRoot.rotation = SHOTGUN_ROT.clone();
+      } else {
+        // Fallback: hold it against the body if the bone is missing.
+        gunRoot.parent = this.root;
+        gunRoot.scaling.setAll(gunWorldScale / scale);
+        gunRoot.position.set(SHOTGUN_POS.x / scale, SHOTGUN_POS.y / scale, SHOTGUN_POS.z / scale);
+        gunRoot.rotation = SHOTGUN_ROT.clone();
+      }
 
       this.ready = true;
       this.setAnim("Idle_5", true);
@@ -190,11 +240,15 @@ export class Player {
     this.root.position.set(this.pos.x, this.rootYOffset, this.pos.z);
     this.root.rotation.y = this.heading;
 
-    // Animation state machine
-    if (moving && aim) this.setAnim("Run_and_Shoot", true);
-    else if (moving) this.setAnim("Running", true);
-    else if (aim) this.setAnim("Alert", true);
-    else this.setAnim("Idle_5", true);
+    // Animation state machine — while firing, play the gunshot reaction.
+    if (this.shootHold > 0) {
+      this.shootHold -= dt;
+      this.setAnim("Gunshot_Reaction", true);
+    } else if (moving) {
+      this.setAnim("Running", true);
+    } else {
+      this.setAnim("Idle_5", true);
+    }
 
     // Fire buckshot
     this.fireTimer -= dt;
@@ -211,6 +265,9 @@ export class Player {
         const a = baseAngle + (Math.random() - 0.5) * SPREAD * 2;
         bullets.spawn(origin, new Vector3(Math.sin(a), 0, Math.cos(a)));
       }
+      // Play the gunshot reaction anim while firing (held until the next shot).
+      this.shootHold = FIRE_INTERVAL + 0.08;
+      this.setAnim("Gunshot_Reaction", true);
       // Muzzle flash
       this.flash.position.set(origin.x + fwd.x * 0.3, origin.y, origin.z + fwd.z * 0.3);
       fm.alpha = 1;

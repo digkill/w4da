@@ -20,14 +20,14 @@ export interface Hero {
  */
 export const HEROES: Hero[] = [
   {
-    id: "artem",
-    name: "Артём",
-    title: "Всадник-пулемётчик",
-    desc: "Скачет на верном коне и поливает орду свинцом без перезарядки.",
+    id: "wanhells",
+    name: "Wanhells",
+    title: "Охотник с дробовиком",
+    desc: "Матёрый охотник на нежить. Дробовик, картечь и холодная голова против орды.",
     portrait: artem,
     stats: [
-      { label: "Урон", value: 4 },
-      { label: "Скорость", value: 4 },
+      { label: "Урон", value: 5 },
+      { label: "Скорость", value: 3 },
       { label: "Броня", value: 3 },
     ],
   },

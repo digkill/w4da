@@ -15,8 +15,10 @@ interface Bullet {
   active: boolean;
 }
 
-const SPEED = 60;
-const LIFE = 1.4;
+// Short-range buckshot: fast, small pellets that die quickly so they read as a
+// spread of tracers near the shooter — not a long glowing beam.
+const SPEED = 52;
+const LIFE = 0.5;
 const RADIUS = 0.35;
 
 export class BulletPool {
@@ -26,7 +28,7 @@ export class BulletPool {
   constructor(scene: Scene) {
     const proto = MeshBuilder.CreateCylinder(
       "bulletProto",
-      { diameter: 0.14, height: 0.9, tessellation: 6 },
+      { diameter: 0.1, height: 0.5, tessellation: 6 },
       scene,
     );
     proto.rotation.x = Math.PI / 2; // point along Z, we orient via lookAt

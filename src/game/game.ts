@@ -41,6 +41,8 @@ import floorUrl from "../assets/floor_material.glb?url";
 
 const BULLET_DMG = 16;
 const MAX_HEALTH = 100;
+const ZERO_MOVE = new Vector3(0, 0, 0);
+const NOOP = () => {};
 // Dota-2-style high-angle top-down follow camera.
 const CAM_OFFSET = new Vector3(0, 27, 15);
 
@@ -100,11 +102,12 @@ export class Game {
     this.loadFloor();
 
     // Emissive bloom for bullets, fire, muzzle flash and zombie eyes.
-    this.glow = new GlowLayer("glow", this.scene, { blurKernelSize: 40 });
-    this.glow.intensity = 0.9;
+    this.glow = new GlowLayer("glow", this.scene, { blurKernelSize: 32 });
+    this.glow.intensity = 0.65;
 
     this.bullets = new BulletPool(this.scene);
     this.player = new Player(this.scene);
+    this.player.setGlow(this.glow);
 
     // Warm torch riding with the hero — lights up zombies as they close in.
     this.torch = new PointLight("torch", new Vector3(0, 2.6, 0), this.scene);
@@ -158,14 +161,14 @@ export class Game {
   private setupLights() {
     // Cool ambient sky fill for a night scene.
     const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), this.scene);
-    hemi.intensity = 0.32;
-    hemi.diffuse = Color3.FromHexString("#7f9bd6");
-    hemi.groundColor = Color3.FromHexString("#0e1226");
+    hemi.intensity = 0.5;
+    hemi.diffuse = Color3.FromHexString("#93aee0");
+    hemi.groundColor = Color3.FromHexString("#141a34");
     hemi.specular = Color3.FromHexString("#2a3a66");
 
     // The moon — cool blue-white key light, high and raking.
     const moon = new DirectionalLight("moon", new Vector3(-0.4, -0.9, 0.3), this.scene);
-    moon.intensity = 1.05;
+    moon.intensity = 1.45;
     moon.diffuse = Color3.FromHexString("#aecbff");
     moon.specular = Color3.FromHexString("#e8f0ff");
     moon.position = new Vector3(40, 70, -30);
@@ -203,11 +206,12 @@ export class Game {
     // Arena ring
     const ring = MeshBuilder.CreateTorus(
       "ring",
-      { diameter: ARENA_RADIUS * 2, thickness: 0.8, tessellation: 64 },
+      { diameter: ARENA_RADIUS * 2, thickness: 0.4, tessellation: 64 },
       this.scene,
     );
-    ring.material = mat(this.scene, "ringMat", "#3a2a10", { emissive: "#1a1204" });
-    ring.position.y = 0.4;
+    // Muted, no emissive — a subtle boundary rather than a glowing beam.
+    ring.material = mat(this.scene, "ringMat", "#3a3128");
+    ring.position.y = 0.2;
     ring.isPickable = false;
 
     // Scatter decor: tombstones, rocks, campfires
@@ -395,6 +399,9 @@ export class Game {
         this.emitTimer = 0;
         this.emit();
       }
+    } else {
+      // Menu / pause: keep the hero standing in idle (and grounded), no firing.
+      this.player.update(dt, ZERO_MOVE, null, this.bullets, NOOP);
     }
 
     if (this.status === "dead") {
