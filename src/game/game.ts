@@ -24,12 +24,18 @@ import {
 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 import { Player, ARENA_RADIUS } from "./player";
-import { EnemyManager, type SpeakingBubble } from "./enemies";
-import { WomanZombieManager } from "./womanZombie";
+import { ZombieManager } from "./zombies";
 import { BulletPool } from "./bullets";
 import { InputManager } from "./input";
 import { mat } from "./factory";
-import type { GameStats, StatsListener, GameStatus, BubbleListener, SpeechBubble } from "./types";
+import type {
+  GameStats,
+  StatsListener,
+  GameStatus,
+  BubbleListener,
+  SpeechBubble,
+  SpeakingBubble,
+} from "./types";
 import skyUrl from "../assets/skybox/textures/Stylized_FieldAtNight_Panorama_002.png?url";
 import floorUrl from "../assets/floor_material.glb?url";
 
@@ -43,8 +49,7 @@ export class Game {
   private scene: Scene;
   private camera: FreeCamera;
   private player: Player;
-  private enemies: EnemyManager;
-  private women: WomanZombieManager;
+  private zombies: ZombieManager;
   private bullets: BulletPool;
   private input: InputManager;
   private ground!: Mesh;
@@ -114,8 +119,7 @@ export class Game {
         this.kills++;
       },
     };
-    this.enemies = new EnemyManager(this.scene, events);
-    this.women = new WomanZombieManager(this.scene, events);
+    this.zombies = new ZombieManager(this.scene, events);
 
     this.input = new InputManager();
     this.input.onPauseToggle = () => this.togglePause();
@@ -320,8 +324,7 @@ export class Game {
     this.moveTarget = null;
     this.pointerDown = false;
     this.player.reset();
-    this.enemies.reset();
-    this.women.reset();
+    this.zombies.reset();
   }
 
   restart() {
@@ -376,20 +379,15 @@ export class Game {
       }
       if (worldMove.lengthSquared() > 1) worldMove.normalize();
 
-      const target = this.nearestTarget();
+      const target = this.zombies.nearestTo(this.player.position);
       this.player.update(dt, worldMove, target, this.bullets, () => {});
 
       this.bullets.update(dt);
       this.bullets.forEachActive((pos, kill) => {
-        if (
-          this.women.hitTest(pos, BulletPool.radius, BULLET_DMG) ||
-          this.enemies.hitTest(pos, BulletPool.radius, BULLET_DMG)
-        )
-          kill();
+        if (this.zombies.hitTest(pos, BulletPool.radius, BULLET_DMG)) kill();
       });
 
-      this.enemies.update(dt, this.player.position);
-      this.women.update(dt, this.player.position, this.enemies.wave);
+      this.zombies.update(dt, this.player.position);
 
       this.emitTimer += dt;
       if (this.emitTimer > 0.1) {
@@ -410,18 +408,6 @@ export class Game {
     this.emitBubbles();
   }
 
-  /** Closest aim target across both the horde and the elite women. */
-  private nearestTarget(): Vector3 | null {
-    const p = this.player.position;
-    const a = this.enemies.nearestTo(p);
-    const b = this.women.nearestTo(p);
-    if (!a) return b;
-    if (!b) return a;
-    const da = (a.x - p.x) ** 2 + (a.z - p.z) ** 2;
-    const db = (b.x - p.x) ** 2 + (b.z - p.z) ** 2;
-    return da <= db ? a : b;
-  }
-
   /** Torch + campfire flicker so the lighting feels alive. */
   private flicker() {
     const now = performance.now() * 0.001;
@@ -436,8 +422,7 @@ export class Game {
 
   private emitBubbles() {
     if (!this.bubbleListener) return;
-    this.enemies.getSpeaking(this.speakingBuf);
-    this.women.appendSpeaking(this.speakingBuf);
+    this.zombies.getSpeaking(this.speakingBuf);
     const w = this.engine.getRenderWidth();
     const h = this.engine.getRenderHeight();
     const vp = this.camera.viewport.toGlobal(w, h);
@@ -478,9 +463,9 @@ export class Game {
       maxHealth: MAX_HEALTH,
       score: this.score,
       kills: this.kills,
-      wave: this.enemies?.wave ?? 1,
+      wave: this.zombies?.wave ?? 1,
       timeSurvived: this.timeSurvived,
-      enemiesAlive: (this.enemies?.aliveCount ?? 0) + (this.women?.aliveCount ?? 0),
+      enemiesAlive: this.zombies?.aliveCount ?? 0,
     };
     this.listener(stats);
   }
@@ -495,8 +480,7 @@ export class Game {
     window.removeEventListener("resize", this.onResize);
     this.input.dispose();
     this.player.dispose();
-    this.enemies.dispose();
-    this.women.dispose();
+    this.zombies.dispose();
     this.bullets.dispose();
     this.floorContainer?.dispose();
     this.scene.dispose();

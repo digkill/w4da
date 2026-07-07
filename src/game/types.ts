@@ -1,4 +1,19 @@
+import type { Vector3 } from "@babylonjs/core";
+
 export type GameStatus = "menu" | "playing" | "paused" | "dead";
+
+/** Callbacks the enemy managers use to talk back to the game. */
+export interface EnemyEvents {
+  onPlayerHit: (dmg: number) => void;
+  onKill: (points: number) => void;
+}
+
+/** A talking zombie with a world-space anchor above its head. */
+export interface SpeakingBubble {
+  id: number;
+  text: string;
+  pos: Vector3;
+}
 
 export interface GameStats {
   status: GameStatus;
