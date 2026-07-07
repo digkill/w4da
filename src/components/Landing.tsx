@@ -2,10 +2,9 @@ import {
   Crosshair,
   Rabbit,
   Skull,
-  Infinity as InfinityIcon,
+  Moon,
   Keyboard,
   Mouse,
-  Smartphone,
   Flame,
   ArrowDown,
   Github,
@@ -29,30 +28,36 @@ export function Landing() {
         <div className="absolute bottom-[-10%] right-[-5%] h-[50vh] w-[50vh] rounded-full bg-accent/20 blur-[120px]" />
       </div>
 
-      {/* HERO */}
-      <section className="container flex min-h-screen flex-col items-center justify-center pt-24 text-center">
-        <Badge variant="accent" className="mb-6 animate-fade-up">
+      {/* GAME — первый экран, чтобы сразу подсадить на игру */}
+      <section id="play" className="relative h-[100svh] w-full pt-16">
+        <div className="h-full w-full">
+          <GameCanvas />
+        </div>
+      </section>
+
+      {/* приглашение листать дальше */}
+      <button
+        onClick={() => document.getElementById("pitch")?.scrollIntoView({ behavior: "smooth" })}
+        className="mx-auto -mt-10 flex animate-bounce items-center gap-2 rounded-full border border-border bg-background/70 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
+      >
+        <ArrowDown className="h-4 w-4" /> Фишки · разговорник · лор
+      </button>
+
+      {/* PITCH — заголовок для SEO и тех, кто долистал */}
+      <section id="pitch" className="container scroll-mt-20 py-16 text-center">
+        <Badge variant="accent" className="mb-6">
           <Flame className="mr-1.5 h-3.5 w-3.5" /> Браузерный 3D-сурвайвал · BabylonJS
         </Badge>
-        <h1 className="max-w-4xl animate-fade-up text-5xl font-bold leading-[1.05] tracking-tight text-glow sm:text-7xl">
-          Скачи на коне.
-          <br />
-          Разнеси орду
-          <br />
+        <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-[1.05] tracking-tight text-glow sm:text-6xl">
+          Скачи на коне. Разнеси орду{" "}
           <span className="text-primary">зомби-цыган.</span>
         </h1>
-        <p
-          className="mt-6 max-w-xl animate-fade-up text-base text-muted-foreground sm:text-lg"
-          style={{ animationDelay: "0.1s" }}
-        >
+        <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
           <span className="font-semibold text-foreground">W4DA</span> — экшен-сурвайвал
-          от третьего лица. Один всадник, один пулемёт и бесконечные волны нечисти.
-          Никаких загрузок — жми и играй.
+          с видом и управлением как в Dota 2. Один всадник, один пулемёт и бесконечные
+          волны нечисти. Никаких загрузок — жми и играй.
         </p>
-        <div
-          className="mt-9 flex animate-fade-up flex-col gap-3 sm:flex-row"
-          style={{ animationDelay: "0.2s" }}
-        >
+        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
           <Button size="lg" onClick={scrollToPlay}>
             <Crosshair className="h-5 w-5" /> Играть бесплатно
           </Button>
@@ -63,26 +68,6 @@ export function Landing() {
           >
             Смотреть фишки
           </Button>
-        </div>
-
-        <div className="mt-16 flex animate-bounce items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-          <ArrowDown className="h-4 w-4" /> Крути вниз
-        </div>
-      </section>
-
-      {/* PLAY */}
-      <section id="play" className="container scroll-mt-20 py-16">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Badge className="mb-4">Играбельная демка</Badge>
-          <h2 className="text-3xl font-bold sm:text-4xl">Попробуй прямо здесь</h2>
-          <p className="mt-2 max-w-lg text-muted-foreground">
-            Жми «Играть», хватай мышь/клавиатуру — или тапай по экрану на телефоне.
-          </p>
-        </div>
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-border shadow-2xl shadow-primary/10">
-          <div className="h-[62vh] max-h-[720px] min-h-[420px] w-full">
-            <GameCanvas />
-          </div>
         </div>
       </section>
 
@@ -114,11 +99,12 @@ export function Landing() {
       <section id="controls" className="container scroll-mt-20 py-20">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
-            <Badge className="mb-4">Управление</Badge>
-            <h2 className="mb-4 text-3xl font-bold sm:text-4xl">Просто садись и скачи</h2>
+            <Badge className="mb-4">Управление · как в Dota 2</Badge>
+            <h2 className="mb-4 text-3xl font-bold sm:text-4xl">Клик — и конь поскакал</h2>
             <p className="mb-8 text-muted-foreground">
-              Пулемёт наводится и стреляет автоматически по ближайшей цели. Твоя
-              задача — маневрировать, кайтить толпу и не дать себя окружить.
+              Управление и вид — прямо как в Dota 2: кликай по земле, и всадник
+              едет в точку. Пулемёт сам наводится и бьёт по ближайшему. Твоя
+              задача — кайтить толпу и не дать себя окружить.
             </p>
             <div className="space-y-4">
               {CONTROLS.map((c) => (
@@ -221,19 +207,19 @@ const FEATURES = [
     text: "Автонаведение и шквальный огонь. Держи дистанцию и коси толпу трассерами.",
   },
   {
-    icon: InfinityIcon,
-    title: "Бесконечные волны",
-    text: "Чем дольше живёшь — тем плотнее орда. Волна за волной, всё быстрее и злее.",
+    icon: Skull,
+    title: "Элитные цыганки",
+    text: "Особый вид нежити с полноценной анимацией: просыпается, шаркает, орёт и атакует.",
   },
   {
-    icon: Skull,
-    title: "Зомби-цыгане",
-    text: "Пёстрая нежить прёт со всех сторон. Окружат — сожрут. Не стой на месте.",
+    icon: Moon,
+    title: "Лунная ночь",
+    text: "Ночной скайбокс, лунный свет, факел всадника и мерцающие костры на проклятом поле.",
   },
 ];
 
 const CONTROLS = [
-  { icon: Keyboard, title: "WASD / стрелки", text: "Управляй конём по всему полю." },
-  { icon: Mouse, title: "Автоогонь", text: "Пулемёт сам бьёт по ближайшему врагу." },
-  { icon: Smartphone, title: "Тач-стик", text: "На телефоне — тащи палец для движения." },
+  { icon: Mouse, title: "Клик по земле", text: "Конь скачет в точку — вид и управление как в Dota 2." },
+  { icon: Keyboard, title: "WASD / стрелки", text: "Альтернативное управление конём." },
+  { icon: Crosshair, title: "Автоогонь", text: "Пулемёт сам бьёт по ближайшему врагу." },
 ];

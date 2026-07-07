@@ -10,21 +10,33 @@ import {
   DirectionalLight,
   PointLight,
   GlowLayer,
+  PhotoDome,
+  PointerEventTypes,
   MeshBuilder,
   StandardMaterial,
+  PBRMaterial,
+  Texture,
+  SceneLoader,
   TransformNode,
   type Mesh,
+  type AssetContainer,
+  type PointerInfo,
 } from "@babylonjs/core";
+import "@babylonjs/loaders/glTF";
 import { Player, ARENA_RADIUS } from "./player";
 import { EnemyManager, type SpeakingBubble } from "./enemies";
+import { WomanZombieManager } from "./womanZombie";
 import { BulletPool } from "./bullets";
 import { InputManager } from "./input";
 import { mat } from "./factory";
 import type { GameStats, StatsListener, GameStatus, BubbleListener, SpeechBubble } from "./types";
+import skyUrl from "../assets/skybox/textures/Stylized_FieldAtNight_Panorama_002.png?url";
+import floorUrl from "../assets/floor_material.glb?url";
 
 const BULLET_DMG = 16;
 const MAX_HEALTH = 100;
-const CAM_OFFSET = new Vector3(0, 12, 15);
+// Dota-2-style high-angle top-down follow camera.
+const CAM_OFFSET = new Vector3(0, 27, 15);
 
 export class Game {
   private engine: Engine;
@@ -32,8 +44,13 @@ export class Game {
   private camera: FreeCamera;
   private player: Player;
   private enemies: EnemyManager;
+  private women: WomanZombieManager;
   private bullets: BulletPool;
   private input: InputManager;
+  private ground!: Mesh;
+  private floorContainer: AssetContainer | null = null;
+  private moveTarget: Vector3 | null = null;
+  private pointerDown = false;
 
   private status: GameStatus = "menu";
   private health = MAX_HEALTH;
@@ -61,19 +78,21 @@ export class Game {
       antialias: true,
     });
     this.scene = new Scene(this.engine);
-    this.scene.clearColor = new Color4(0.03, 0.03, 0.05, 1);
+    // Moonlit night mood.
+    this.scene.clearColor = new Color4(0.02, 0.03, 0.06, 1);
     this.scene.fogMode = Scene.FOGMODE_EXP2;
-    this.scene.fogColor = new Color3(0.05, 0.04, 0.08);
-    this.scene.fogDensity = 0.011;
+    this.scene.fogColor = new Color3(0.04, 0.06, 0.12);
+    this.scene.fogDensity = 0.008;
 
     this.camera = new FreeCamera("cam", CAM_OFFSET.clone(), this.scene);
     this.camera.setTarget(Vector3.Zero());
-    this.camera.fov = 0.9;
-    this.camera.minZ = 0.1;
-    this.camera.maxZ = 400;
+    this.camera.fov = 0.85;
+    this.camera.minZ = 1;
+    this.camera.maxZ = 2000; // far enough to contain the skybox dome
 
     this.setupLights();
     this.buildWorld();
+    this.loadFloor();
 
     // Emissive bloom for bullets, fire, muzzle flash and zombie eyes.
     this.glow = new GlowLayer("glow", this.scene, { blurKernelSize: 40 });
@@ -88,54 +107,94 @@ export class Game {
     this.torch.intensity = this.torchBase;
     this.torch.range = 26;
     this.torch.parent = this.player.rig.root;
-    this.enemies = new EnemyManager(this.scene, {
-      onPlayerHit: (dmg) => this.damagePlayer(dmg),
-      onKill: (pts) => {
+    const events = {
+      onPlayerHit: (dmg: number) => this.damagePlayer(dmg),
+      onKill: (pts: number) => {
         this.score += pts;
         this.kills++;
       },
-    });
+    };
+    this.enemies = new EnemyManager(this.scene, events);
+    this.women = new WomanZombieManager(this.scene, events);
 
-    this.input = new InputManager(canvas);
+    this.input = new InputManager();
     this.input.onPauseToggle = () => this.togglePause();
+    this.setupPointerToMove();
 
     this.engine.runRenderLoop(() => this.frame());
     window.addEventListener("resize", this.onResize);
   }
 
+  /** Dota-style click/hold-to-move: point on the ground and the hero rides there. */
+  private setupPointerToMove() {
+    this.scene.onPointerObservable.add((pi: PointerInfo) => {
+      if (this.status !== "playing") return;
+      const type = pi.type;
+      if (type === PointerEventTypes.POINTERDOWN) {
+        this.pointerDown = true;
+        this.pickMove();
+      } else if (type === PointerEventTypes.POINTERUP) {
+        this.pointerDown = false;
+      } else if (type === PointerEventTypes.POINTERMOVE && this.pointerDown) {
+        this.pickMove();
+      }
+    });
+  }
+
+  private pickMove() {
+    const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (m) => m === this.ground);
+    if (pick?.hit && pick.pickedPoint) {
+      const t = pick.pickedPoint;
+      const r = Math.hypot(t.x, t.z);
+      const clamp = r > ARENA_RADIUS ? ARENA_RADIUS / r : 1;
+      this.moveTarget = new Vector3(t.x * clamp, 0, t.z * clamp);
+    }
+  }
+
   private setupLights() {
+    // Cool ambient sky fill for a night scene.
     const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), this.scene);
-    hemi.intensity = 0.42;
-    hemi.diffuse = Color3.FromHexString("#ffcf9e");
-    hemi.groundColor = Color3.FromHexString("#1b1330");
-    hemi.specular = Color3.FromHexString("#332211");
+    hemi.intensity = 0.32;
+    hemi.diffuse = Color3.FromHexString("#7f9bd6");
+    hemi.groundColor = Color3.FromHexString("#0e1226");
+    hemi.specular = Color3.FromHexString("#2a3a66");
 
-    // Warm low sun (key light) — long dramatic shadows/highlights.
-    const sun = new DirectionalLight("sun", new Vector3(-0.5, -0.85, 0.35), this.scene);
-    sun.intensity = 1.35;
-    sun.diffuse = Color3.FromHexString("#ff7a2c");
-    sun.specular = Color3.FromHexString("#ffd9a0");
-    sun.position = new Vector3(50, 60, -35);
+    // The moon — cool blue-white key light, high and raking.
+    const moon = new DirectionalLight("moon", new Vector3(-0.4, -0.9, 0.3), this.scene);
+    moon.intensity = 1.05;
+    moon.diffuse = Color3.FromHexString("#aecbff");
+    moon.specular = Color3.FromHexString("#e8f0ff");
+    moon.position = new Vector3(40, 70, -30);
 
-    // Cool blue rim/fill from the opposite side for shape and mood.
-    const rim = new DirectionalLight("rim", new Vector3(0.6, -0.3, -0.6), this.scene);
-    rim.intensity = 0.5;
-    rim.diffuse = Color3.FromHexString("#4a6cff");
-    rim.specular = Color3.FromHexString("#8aa0ff");
+    // Faint warm fill from the horizon (distant campfires) for contrast.
+    const warm = new DirectionalLight("warm", new Vector3(0.5, -0.2, -0.6), this.scene);
+    warm.intensity = 0.28;
+    warm.diffuse = Color3.FromHexString("#ff9a4c");
+    warm.specular = Color3.FromHexString("#ffb15a");
   }
 
   private buildWorld() {
-    // Ground
+    // Moonlit night panorama skybox (equirectangular photo dome).
+    const dome = new PhotoDome(
+      "sky",
+      skyUrl,
+      { resolution: 32, size: 900 },
+      this.scene,
+    );
+    dome.mesh.isPickable = false;
+
+    // Ground (pickable — Dota-style click-to-move raycasts against it).
     const ground = MeshBuilder.CreateGround(
       "ground",
-      { width: 260, height: 260, subdivisions: 2 },
+      { width: 400, height: 400, subdivisions: 2 },
       this.scene,
     );
     const gm = new StandardMaterial("groundMat", this.scene);
-    gm.diffuseColor = Color3.FromHexString("#1a2416");
-    gm.specularColor = new Color3(0, 0, 0);
+    gm.diffuseColor = Color3.FromHexString("#141c1a");
+    gm.specularColor = new Color3(0.04, 0.05, 0.08);
     ground.material = gm;
-    ground.isPickable = false;
+    ground.isPickable = true;
+    this.ground = ground;
 
     // Arena ring
     const ring = MeshBuilder.CreateTorus(
@@ -208,6 +267,30 @@ export class Game {
     decor.getChildMeshes().forEach((m) => (m.isPickable = false));
   }
 
+  /** Load the tiled PBR floor material from the GLB and apply it to the ground. */
+  private async loadFloor() {
+    try {
+      const c = await SceneLoader.LoadAssetContainerAsync(floorUrl, "", this.scene, null, ".glb");
+      this.floorContainer = c; // keep alive so material/textures aren't disposed
+      const m = c.materials.find((x) => x instanceof PBRMaterial) as PBRMaterial | undefined;
+      if (!m) return;
+      const TILE = 42; // ground is 400u; repeat the tile densely
+      [m.albedoTexture, m.metallicTexture, m.bumpTexture].forEach((t) => {
+        if (t instanceof Texture) {
+          t.uScale = TILE;
+          t.vScale = TILE;
+          t.wrapU = Texture.WRAP_ADDRESSMODE;
+          t.wrapV = Texture.WRAP_ADDRESSMODE;
+        }
+      });
+      m.maxSimultaneousLights = 8;
+      m.environmentIntensity = 0.4;
+      this.ground.material = m;
+    } catch (e) {
+      console.warn("[W4DA] floor material failed to load:", e);
+    }
+  }
+
   onStats(listener: StatsListener) {
     this.listener = listener;
     this.emit();
@@ -234,8 +317,11 @@ export class Game {
     this.timeSurvived = 0;
     this.hurtFlash = 0;
     this.deadTimer = 0;
+    this.moveTarget = null;
+    this.pointerDown = false;
     this.player.reset();
     this.enemies.reset();
+    this.women.reset();
   }
 
   restart() {
@@ -274,20 +360,36 @@ export class Game {
     if (this.status === "playing") {
       this.timeSurvived += dt;
 
+      // Movement: keyboard (WASD/arrows) takes priority; otherwise ride toward
+      // the last Dota-style click point on the ground.
       const move2 = this.input.getDirection();
-      // Left/right inverted per design: negate the horizontal (strafe) axis.
-      const worldMove = new Vector3(-move2.x, 0, -move2.y);
+      const worldMove = new Vector3(0, 0, 0);
+      if (move2.x !== 0 || move2.y !== 0) {
+        this.moveTarget = null; // keyboard overrides click destination
+        worldMove.set(-move2.x, 0, -move2.y); // left/right inverted per design
+      } else if (this.moveTarget) {
+        const dx = this.moveTarget.x - this.player.position.x;
+        const dz = this.moveTarget.z - this.player.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.6) worldMove.set(dx / d, 0, dz / d);
+        else this.moveTarget = null; // arrived
+      }
       if (worldMove.lengthSquared() > 1) worldMove.normalize();
 
-      const target = this.enemies.nearestTo(this.player.position);
+      const target = this.nearestTarget();
       this.player.update(dt, worldMove, target, this.bullets, () => {});
 
       this.bullets.update(dt);
       this.bullets.forEachActive((pos, kill) => {
-        if (this.enemies.hitTest(pos, BulletPool.radius, BULLET_DMG)) kill();
+        if (
+          this.women.hitTest(pos, BulletPool.radius, BULLET_DMG) ||
+          this.enemies.hitTest(pos, BulletPool.radius, BULLET_DMG)
+        )
+          kill();
       });
 
       this.enemies.update(dt, this.player.position);
+      this.women.update(dt, this.player.position, this.enemies.wave);
 
       this.emitTimer += dt;
       if (this.emitTimer > 0.1) {
@@ -308,6 +410,18 @@ export class Game {
     this.emitBubbles();
   }
 
+  /** Closest aim target across both the horde and the elite women. */
+  private nearestTarget(): Vector3 | null {
+    const p = this.player.position;
+    const a = this.enemies.nearestTo(p);
+    const b = this.women.nearestTo(p);
+    if (!a) return b;
+    if (!b) return a;
+    const da = (a.x - p.x) ** 2 + (a.z - p.z) ** 2;
+    const db = (b.x - p.x) ** 2 + (b.z - p.z) ** 2;
+    return da <= db ? a : b;
+  }
+
   /** Torch + campfire flicker so the lighting feels alive. */
   private flicker() {
     const now = performance.now() * 0.001;
@@ -323,6 +437,7 @@ export class Game {
   private emitBubbles() {
     if (!this.bubbleListener) return;
     this.enemies.getSpeaking(this.speakingBuf);
+    this.women.appendSpeaking(this.speakingBuf);
     const w = this.engine.getRenderWidth();
     const h = this.engine.getRenderHeight();
     const vp = this.camera.viewport.toGlobal(w, h);
@@ -365,7 +480,7 @@ export class Game {
       kills: this.kills,
       wave: this.enemies?.wave ?? 1,
       timeSurvived: this.timeSurvived,
-      enemiesAlive: this.enemies?.aliveCount ?? 0,
+      enemiesAlive: (this.enemies?.aliveCount ?? 0) + (this.women?.aliveCount ?? 0),
     };
     this.listener(stats);
   }
@@ -381,7 +496,9 @@ export class Game {
     this.input.dispose();
     this.player.dispose();
     this.enemies.dispose();
+    this.women.dispose();
     this.bullets.dispose();
+    this.floorContainer?.dispose();
     this.scene.dispose();
     this.engine.dispose();
   }

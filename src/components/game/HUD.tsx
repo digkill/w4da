@@ -69,7 +69,7 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
       {/* Crosshair */}
       {stats.status === "playing" && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-          WASD / стрелки / стик — движение · пулемёт стреляет сам
+          Клик по земле — ехать (как в Dota) · WASD тоже · пулемёт бьёт сам
         </div>
       )}
 
@@ -77,21 +77,25 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause }: Props) {
       {stats.status === "menu" && (
         <Overlay>
           <Badge variant="accent" className="mb-4 animate-pulse-glow">
-            Сурвайвал · вид от 3-го лица
+            Сурвайвал · вид как в Dota 2
           </Badge>
-          <h2 className="mb-3 text-4xl font-bold text-glow sm:text-5xl">
+          <h2 className="mb-3 text-4xl font-bold text-glow sm:text-6xl">
             Оседлай коня.<br />
             <span className="text-primary">Коси орду.</span>
           </h2>
-          <p className="mb-7 max-w-md text-sm text-muted-foreground sm:text-base">
+          <p className="mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
             Скачи по проклятому полю и отбивайся из пулемёта от нескончаемых
             зомби-цыган. Продержись как можно дольше.
           </p>
-          <Button size="lg" className="pointer-events-auto animate-pulse-glow" onClick={onStart}>
-            <Play className="h-5 w-5" /> Играть
-          </Button>
-          <p className="mt-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-            Управление: WASD или стрелки · на телефоне — тач-стик
+          <button
+            onClick={onStart}
+            className="pointer-events-auto group relative inline-flex items-center gap-3 rounded-2xl bg-primary px-12 py-6 text-2xl font-bold uppercase tracking-wide text-primary-foreground shadow-2xl shadow-primary/50 transition-transform hover:scale-105 active:scale-95 animate-pulse-glow sm:text-3xl"
+          >
+            <Play className="h-8 w-8 fill-current" />
+            Играть
+          </button>
+          <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+            Клик по земле — движение (как в Dota 2) · пулемёт стреляет сам
           </p>
         </Overlay>
       )}
