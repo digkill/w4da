@@ -13,6 +13,7 @@ interface Bullet {
   vel: Vector3;
   life: number;
   active: boolean;
+  damage: number;
 }
 
 // Short-range buckshot: fast, small pellets that die quickly so they read as a
@@ -43,19 +44,20 @@ export class BulletPool {
     this.proto = proto;
   }
 
-  spawn(origin: Vector3, dir: Vector3) {
+  spawn(origin: Vector3, dir: Vector3, damage = 16, speed = SPEED, life = LIFE) {
     let b = this.pool.find((p) => !p.active);
     if (!b) {
       const inst = this.proto.createInstance("bullet" + this.pool.length);
       inst.isPickable = false;
-      b = { mesh: inst, vel: new Vector3(), life: 0, active: false };
+      b = { mesh: inst, vel: new Vector3(), life: 0, active: false, damage: 0 };
       this.pool.push(b);
     }
     b.active = true;
-    b.life = LIFE;
+    b.life = life;
+    b.damage = damage;
     b.mesh.isVisible = true;
     b.mesh.position.copyFrom(origin);
-    b.vel.copyFrom(dir).normalize().scaleInPlace(SPEED);
+    b.vel.copyFrom(dir).normalize().scaleInPlace(speed);
     const look = origin.add(b.vel);
     b.mesh.lookAt(look);
   }
@@ -70,9 +72,9 @@ export class BulletPool {
   }
 
   /** Active bullets for collision tests. */
-  forEachActive(cb: (pos: Vector3, kill: () => void) => void) {
+  forEachActive(cb: (pos: Vector3, damage: number, kill: () => void) => void) {
     for (const b of this.pool) {
-      if (b.active) cb(b.mesh.position, () => this.kill(b));
+      if (b.active) cb(b.mesh.position, b.damage, () => this.kill(b));
     }
   }
 

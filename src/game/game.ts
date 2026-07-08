@@ -25,9 +25,13 @@ import {
 import "@babylonjs/loaders/glTF";
 import { Player, ARENA_RADIUS } from "./player";
 import { ZombieManager } from "./zombies";
+import { FireElemental } from "./summon";
+import { MeteorStrike } from "./meteor";
 import { BulletPool } from "./bullets";
 import { InputManager } from "./input";
+import { makeSfxPool, playSfx } from "./sfx";
 import { mat } from "./factory";
+import hissSfxUrl from "../assets/audio/hiss-of-an-aggressive-zombie.mp3?url";
 import type {
   GameStats,
   StatsListener,
@@ -39,10 +43,12 @@ import type {
 import skyUrl from "../assets/skybox/textures/Stylized_FieldAtNight_Panorama_002.png?url";
 import floorUrl from "../assets/floor_material.glb?url";
 
-const BULLET_DMG = 16;
 const MAX_HEALTH = 100;
+const MAX_MANA = 100;
+const MANA_REGEN = 9; // per second
+const ULT_COST = 60; // mana to cast the Fire Elemental ultimate
+const METEOR_COST = 40; // mana for the meteor strike
 const ZERO_MOVE = new Vector3(0, 0, 0);
-const NOOP = () => {};
 // Dota-2-style high-angle top-down follow camera.
 const CAM_OFFSET = new Vector3(0, 27, 15);
 
@@ -52,15 +58,23 @@ export class Game {
   private camera: FreeCamera;
   private player: Player;
   private zombies: ZombieManager;
+  private summon: FireElemental;
+  private meteor: MeteorStrike;
   private bullets: BulletPool;
   private input: InputManager;
   private ground!: Mesh;
   private floorContainer: AssetContainer | null = null;
   private moveTarget: Vector3 | null = null;
   private pointerDown = false;
+  private clickMarker!: Mesh; // green move arrow
+  private targetMarker!: Mesh; // red arrow over a hovered mob
+  private markerT = 0;
+  private hoverPoint: Vector3 | null = null;
+  private hissSfx = makeSfxPool(hissSfxUrl, 1, 0.6);
 
   private status: GameStatus = "menu";
   private health = MAX_HEALTH;
+  private mana = MAX_MANA;
   private score = 0;
   private kills = 0;
   private timeSurvived = 0;
@@ -122,10 +136,14 @@ export class Game {
         this.kills++;
       },
     };
-    this.zombies = new ZombieManager(this.scene, events);
+    this.zombies = new ZombieManager(this.scene, events, this.glow);
+    this.summon = new FireElemental(this.scene);
+    this.meteor = new MeteorStrike(this.scene, this.glow);
 
     this.input = new InputManager();
     this.input.onPauseToggle = () => this.togglePause();
+    this.input.onUltimate = () => this.triggerUltimate();
+    this.input.onMeteor = () => this.triggerMeteor();
     this.setupPointerToMove();
 
     this.engine.runRenderLoop(() => this.frame());
@@ -142,8 +160,9 @@ export class Game {
         this.pickMove();
       } else if (type === PointerEventTypes.POINTERUP) {
         this.pointerDown = false;
-      } else if (type === PointerEventTypes.POINTERMOVE && this.pointerDown) {
-        this.pickMove();
+      } else if (type === PointerEventTypes.POINTERMOVE) {
+        if (this.pointerDown) this.pickMove();
+        this.updateHoverPoint();
       }
     });
   }
@@ -155,6 +174,62 @@ export class Game {
       const r = Math.hypot(t.x, t.z);
       const clamp = r > ARENA_RADIUS ? ARENA_RADIUS / r : 1;
       this.moveTarget = new Vector3(t.x * clamp, 0, t.z * clamp);
+      this.markerT = 0; // restart the ping pulse
+    }
+  }
+
+  /** A downward-pointing arrow marker (Dota-style). */
+  private makeArrow(name: string, hex: string): Mesh {
+    const a = MeshBuilder.CreateCylinder(
+      name,
+      { diameterTop: 0, diameterBottom: 0.85, height: 1.3, tessellation: 4 },
+      this.scene,
+    );
+    a.rotation.x = Math.PI; // tip points down at the ground
+    const m = new StandardMaterial(name + "Mat", this.scene);
+    m.emissiveColor = Color3.FromHexString(hex);
+    m.diffuseColor = Color3.FromHexString(hex);
+    m.disableLighting = true;
+    a.material = m;
+    a.isPickable = false;
+    a.isVisible = false;
+    return a;
+  }
+
+  private updateHoverPoint() {
+    const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (m) => m === this.ground);
+    this.hoverPoint = pick?.hit && pick.pickedPoint ? pick.pickedPoint : null;
+  }
+
+  /** Green arrow at the move destination; red arrow over a hovered mob. */
+  private updateMarker(dt: number) {
+    this.markerT += dt;
+    const bob = Math.abs(Math.sin(this.markerT * 4)) * 0.4;
+
+    if (this.status === "playing" && this.moveTarget) {
+      this.clickMarker.isVisible = true;
+      this.clickMarker.position.set(this.moveTarget.x, 2.2 + bob, this.moveTarget.z);
+      this.clickMarker.rotation.y += dt * 2.5;
+    } else {
+      this.clickMarker.isVisible = false;
+    }
+
+    // Red target arrow over the mob under the cursor.
+    let mob: Vector3 | null = null;
+    if (this.status === "playing" && this.hoverPoint) {
+      const n = this.zombies.nearestTo(this.hoverPoint);
+      if (n) {
+        const dx = n.x - this.hoverPoint.x;
+        const dz = n.z - this.hoverPoint.z;
+        if (dx * dx + dz * dz < 9) mob = n;
+      }
+    }
+    if (mob) {
+      this.targetMarker.isVisible = true;
+      this.targetMarker.position.set(mob.x, 5 + bob, mob.z);
+      this.targetMarker.rotation.y += dt * 3;
+    } else {
+      this.targetMarker.isVisible = false;
     }
   }
 
@@ -213,6 +288,11 @@ export class Game {
     ring.material = mat(this.scene, "ringMat", "#3a3128");
     ring.position.y = 0.2;
     ring.isPickable = false;
+
+    // Dota-style arrow markers: green for the move destination, red over a
+    // hovered mob (target).
+    this.clickMarker = this.makeArrow("moveArrow", "#43e06b");
+    this.targetMarker = this.makeArrow("targetArrow", "#ff3a2a");
 
     // Scatter decor: tombstones, rocks, campfires
     const decor = new TransformNode("decor", this.scene);
@@ -315,11 +395,13 @@ export class Game {
 
   start() {
     this.status = "playing";
+    playSfx(this.hissSfx); // aggressive zombie hiss as the horde begins
     this.emit();
   }
 
   private resetState() {
     this.health = MAX_HEALTH;
+    this.mana = MAX_MANA;
     this.score = 0;
     this.kills = 0;
     this.timeSurvived = 0;
@@ -329,11 +411,14 @@ export class Game {
     this.pointerDown = false;
     this.player.reset();
     this.zombies.reset();
+    this.summon.reset();
+    this.meteor.reset();
   }
 
   restart() {
     this.resetState();
     this.status = "playing";
+    playSfx(this.hissSfx);
     this.emit();
   }
 
@@ -341,6 +426,27 @@ export class Game {
   returnToMenu() {
     this.resetState();
     this.status = "menu";
+    this.emit();
+  }
+
+  /** Cast the Fire Elemental ultimate (mana-gated, one at a time). */
+  triggerUltimate() {
+    if (this.status !== "playing") return;
+    if (this.mana < ULT_COST || !this.summon.canCast()) return;
+    this.mana -= ULT_COST;
+    this.summon.cast(this.player.position);
+    this.player.startCast(2); // lock hero into the skill animation during the channel
+    this.emit();
+  }
+
+  /** Meteor strike skill (mana-gated) — drops onto the nearest zombie / cursor. */
+  triggerMeteor() {
+    if (this.status !== "playing") return;
+    if (this.mana < METEOR_COST || !this.meteor.canCast()) return;
+    const point =
+      this.zombies.nearestTo(this.player.position) ?? this.hoverPoint ?? this.player.position;
+    this.mana -= METEOR_COST;
+    this.meteor.cast(point);
     this.emit();
   }
 
@@ -384,15 +490,18 @@ export class Game {
       }
       if (worldMove.lengthSquared() > 1) worldMove.normalize();
 
+      this.mana = Math.min(MAX_MANA, this.mana + MANA_REGEN * dt);
       const target = this.zombies.nearestTo(this.player.position);
-      this.player.update(dt, worldMove, target, this.bullets, () => {});
+      this.player.update(dt, worldMove, target, this.bullets);
 
       this.bullets.update(dt);
-      this.bullets.forEachActive((pos, kill) => {
-        if (this.zombies.hitTest(pos, BulletPool.radius, BULLET_DMG)) kill();
+      this.bullets.forEachActive((pos, dmg, kill) => {
+        if (this.zombies.hitTest(pos, BulletPool.radius, dmg)) kill();
       });
 
       this.zombies.update(dt, this.player.position);
+      this.summon.update(dt, this.player.position, this.zombies);
+      this.meteor.update(dt, this.zombies);
 
       this.emitTimer += dt;
       if (this.emitTimer > 0.1) {
@@ -401,7 +510,7 @@ export class Game {
       }
     } else {
       // Menu / pause: keep the hero standing in idle (and grounded), no firing.
-      this.player.update(dt, ZERO_MOVE, null, this.bullets, NOOP);
+      this.player.update(dt, ZERO_MOVE, null, this.bullets);
     }
 
     if (this.status === "dead") {
@@ -410,6 +519,7 @@ export class Game {
     }
 
     this.hurtFlash = Math.max(0, this.hurtFlash - dt * 2);
+    this.updateMarker(dt);
     this.flicker();
     this.updateCamera(dt);
     this.scene.render();
@@ -469,11 +579,15 @@ export class Game {
       status: this.status,
       health: this.health,
       maxHealth: MAX_HEALTH,
+      mana: this.mana,
+      maxMana: MAX_MANA,
       score: this.score,
       kills: this.kills,
       wave: this.zombies?.wave ?? 1,
       timeSurvived: this.timeSurvived,
       enemiesAlive: this.zombies?.aliveCount ?? 0,
+      ultReady: this.mana >= ULT_COST && (this.summon?.canCast() ?? false),
+      meteorReady: this.mana >= METEOR_COST && (this.meteor?.canCast() ?? false),
     };
     this.listener(stats);
   }
@@ -489,6 +603,8 @@ export class Game {
     this.input.dispose();
     this.player.dispose();
     this.zombies.dispose();
+    this.summon.dispose();
+    this.meteor.dispose();
     this.bullets.dispose();
     this.floorContainer?.dispose();
     this.scene.dispose();

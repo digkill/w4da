@@ -8,6 +8,8 @@ import { Vector2 } from "@babylonjs/core";
 export class InputManager {
   private keys = new Set<string>();
   public onPauseToggle?: () => void;
+  public onUltimate?: () => void;
+  public onMeteor?: () => void;
 
   private readonly handleKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase();
@@ -16,6 +18,14 @@ export class InputManager {
     }
     if (k === "p" || k === "escape") {
       this.onPauseToggle?.();
+      return;
+    }
+    if (k === "r" || k === "q") {
+      this.onUltimate?.();
+      return;
+    }
+    if (k === "e" || k === "f") {
+      this.onMeteor?.();
       return;
     }
     this.keys.add(k);

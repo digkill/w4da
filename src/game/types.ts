@@ -19,11 +19,15 @@ export interface GameStats {
   status: GameStatus;
   health: number;
   maxHealth: number;
+  mana: number;
+  maxMana: number;
   score: number;
   kills: number;
   wave: number;
   timeSurvived: number; // seconds
   enemiesAlive: number;
+  ultReady: boolean;
+  meteorReady: boolean;
 }
 
 export type StatsListener = (stats: GameStats) => void;

@@ -9,11 +9,15 @@ const INITIAL: GameStats = {
   status: "menu",
   health: 100,
   maxHealth: 100,
+  mana: 100,
+  maxMana: 100,
   score: 0,
   kills: 0,
   wave: 1,
   timeSurvived: 0,
   enemiesAlive: 0,
+  ultReady: false,
+  meteorReady: false,
 };
 
 export function GameCanvas() {
@@ -76,12 +80,14 @@ export function GameCanvas() {
         onRestart={() => gameRef.current?.restart()}
         onResume={() => gameRef.current?.togglePause()}
         onPause={() => gameRef.current?.togglePause()}
+        onUltimate={() => gameRef.current?.triggerUltimate()}
+        onMeteor={() => gameRef.current?.triggerMeteor()}
       />
 
       <button
         onClick={toggleFullscreen}
         aria-label={isFull ? "Свернуть" : "На весь экран"}
-        className="pointer-events-auto absolute bottom-4 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-black/55 text-foreground/90 backdrop-blur transition-colors hover:border-primary hover:text-primary"
+        className="pointer-events-auto absolute left-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-black/55 text-foreground/90 backdrop-blur transition-colors hover:border-primary hover:text-primary"
       >
         {isFull ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
       </button>
