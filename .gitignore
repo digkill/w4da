@@ -9,6 +9,13 @@ dist-ssr
 
 *.tsbuildinfo
 
+# Environment variables
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
 # Rust worker
 server/target
-server/.env
