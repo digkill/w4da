@@ -1,7 +1,9 @@
-# W4DA realtime multiplayer worker (Rust).
-# The database is EXTERNAL — configure DATABASE_URL in server/.env.
+# W4DA stack.
+# Multiplayer worker is disabled for now — enable with:
+#   docker compose --profile multiplayer up --build
 services:
   worker:
+    profiles: ["multiplayer"]
     build:
       context: ./server
       dockerfile: Dockerfile

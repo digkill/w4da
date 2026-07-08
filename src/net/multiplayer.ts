@@ -1,18 +1,14 @@
 /**
  * W4DA multiplayer client — thin WebSocket transport to the Rust worker.
- *
- * Usage:
- *   const net = new MultiplayerClient();
- *   net.on("state", (p) => updateRemoteAvatar(p));
- *   net.connect("arena", "Wanhells");
- *   // each tick:
- *   net.sendState({ x, z, heading, hp, anim });
- *
- * The worker relays state/actions to everyone else in the room (up to 10).
+ * Disabled by default until the worker is deployed and wired into the game loop.
  */
 
+/** Set VITE_MULTIPLAYER_ENABLED=true at build time to turn networking back on. */
+export const MULTIPLAYER_ENABLED =
+  import.meta.env.VITE_MULTIPLAYER_ENABLED === "true";
+
 const DEFAULT_URL =
-  (import.meta.env.VITE_WS_URL as string | undefined) ?? "ws://localhost:8080/ws";
+  (import.meta.env.VITE_WS_URL as string | undefined) ?? "ws://localhost:8059/ws";
 
 export interface PlayerState {
   x: number;
@@ -66,6 +62,7 @@ export class MultiplayerClient {
   }
 
   connect(room: string, name: string) {
+    if (!MULTIPLAYER_ENABLED) return;
     this.disconnect();
     const ws = new WebSocket(this.url);
     this.ws = ws;
@@ -122,10 +119,12 @@ export class MultiplayerClient {
   }
 
   sendState(s: PlayerState) {
+    if (!MULTIPLAYER_ENABLED) return;
     this.send({ t: "state", ...s });
   }
 
   sendAction(kind: string, data: unknown = {}) {
+    if (!MULTIPLAYER_ENABLED) return;
     this.send({ t: "action", kind, data });
   }
 
