@@ -1,9 +1,9 @@
 # ---- Build stage ----
-FROM rust:1.83-slim AS builder
+FROM rust:1.86-slim AS builder
 WORKDIR /app
 
 # Cache dependencies first.
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs \
     && cargo build --release || true
 RUN rm -rf src
