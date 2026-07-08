@@ -1,4 +1,8 @@
-import artem from "@/assets/images/artem.png";
+import nox from "@/assets/images/Nox.png";
+import una from "@/assets/una.png";
+import valera from "@/assets/images/valera.png";
+
+export type HeroId = "wanhells" | "uka" | "valera";
 
 export interface HeroStat {
   label: string;
@@ -6,7 +10,7 @@ export interface HeroStat {
 }
 
 export interface Hero {
-  id: string;
+  id: HeroId;
   name: string;
   title: string;
   desc: string;
@@ -14,21 +18,42 @@ export interface Hero {
   stats: HeroStat[];
 }
 
-/**
- * Playable roster. For now there is a single hero — more (with their own 3D
- * models) will be added later. Keep this list the single source of truth.
- */
+/** Playable roster. Keep this list the single source of truth for hero UI. */
 export const HEROES: Hero[] = [
   {
     id: "wanhells",
-    name: "Wanhells",
-    title: "Охотник с дробовиком",
-    desc: "Матёрый охотник на нежить. Дробовик, картечь и холодная голова против орды.",
-    portrait: artem,
+    name: "Nox",
+    title: "Алый экзорцист",
+    desc: "«Сначала улыбка. Потом приговор.» Матёрый охотник на нежить. Дробовик, картечь и холодная голова против орды.",
+    portrait: nox,
     stats: [
       { label: "Урон", value: 5 },
       { label: "Скорость", value: 3 },
       { label: "Броня", value: 3 },
+    ],
+  },
+  {
+    id: "uka",
+    name: "Una",
+    title: "Неоновая мечница",
+    desc: "«Красный неон режет тишину.» Режет монстров красной кибер-катаной и добивает дальних точным выстрелом.",
+    portrait: una,
+    stats: [
+      { label: "Урон", value: 5 },
+      { label: "Скорость", value: 4 },
+      { label: "Броня", value: 2 },
+    ],
+  },
+  {
+    id: "valera",
+    name: "Valera",
+    title: "Тяжёлый штурмовик",
+    desc: "«Тяжёлая артиллерия уже здесь.» Давит монстров плотным автоматическим огнём на средней дистанции.",
+    portrait: valera,
+    stats: [
+      { label: "Урон", value: 4 },
+      { label: "Скорость", value: 3 },
+      { label: "Броня", value: 4 },
     ],
   },
 ];

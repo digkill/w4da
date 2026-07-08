@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { GameStats } from "@/game/types";
 import { HeroSelect } from "./HeroSelect";
-import { HEROES } from "@/data/heroes";
+import { HEROES, type HeroId } from "@/data/heroes";
 
 function fmtTime(s: number) {
   const m = Math.floor(s / 60);
@@ -15,7 +15,7 @@ function fmtTime(s: number) {
 
 interface Props {
   stats: GameStats;
-  onStart: () => void;
+  onStart: (heroId: HeroId) => void;
   onRestart: () => void;
   onResume: () => void;
   onPause: () => void;
@@ -83,7 +83,7 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause, onUltimate, 
       {/* Crosshair */}
       {stats.status === "playing" && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-          Клик по земле — ехать (как в Dota) · WASD тоже · пулемёт бьёт сам
+          Клик по земле — ехать (как в Dota) · WASD тоже · оружие бьёт само
         </div>
       )}
 
@@ -104,14 +104,14 @@ export function HUD({ stats, onStart, onRestart, onResume, onPause, onUltimate, 
             <HeroSelect selectedId={heroId} onSelect={setHeroId} />
 
             <button
-              onClick={onStart}
+              onClick={() => onStart(heroId)}
               className="pointer-events-auto group relative mt-1 inline-flex items-center gap-3 rounded-2xl bg-primary px-12 py-5 text-2xl font-bold uppercase tracking-wide text-primary-foreground shadow-2xl shadow-primary/50 transition-transform hover:scale-105 active:scale-95 animate-pulse-glow sm:text-3xl"
             >
               <Play className="h-8 w-8 fill-current" />
               Играть за {selectedHeroName}
             </button>
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-              Клик по земле — движение (как в Dota 2) · пулемёт стреляет сам
+              Клик по земле — движение (как в Dota 2) · оружие стреляет само
             </p>
           </div>
         </Overlay>

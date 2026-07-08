@@ -1,10 +1,10 @@
 import { Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HEROES, type Hero } from "@/data/heroes";
+import { HEROES, type Hero, type HeroId } from "@/data/heroes";
 
 interface Props {
-  selectedId: string;
-  onSelect: (id: string) => void;
+  selectedId: HeroId;
+  onSelect: (id: HeroId) => void;
 }
 
 export function HeroSelect({ selectedId, onSelect }: Props) {

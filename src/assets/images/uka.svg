@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Uka hero portrait">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101821"/>
+      <stop offset="0.55" stop-color="#263a42"/>
+      <stop offset="1" stop-color="#6e182a"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9f4ff"/>
+      <stop offset="0.5" stop-color="#8fb3c8"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="480" fill="url(#bg)"/>
+  <circle cx="82" cy="78" r="110" fill="#64d9ff" opacity=".12"/>
+  <circle cx="266" cy="302" r="150" fill="#ff3158" opacity=".14"/>
+  <path d="M41 418 277 181l12 12L54 431z" fill="url(#steel)" opacity=".9"/>
+  <path d="M32 430 69 393l20 20-37 37z" fill="#121820"/>
+  <path d="M35 139h250v30H35z" fill="#0d1218" transform="rotate(-13 160 154)"/>
+  <path d="M73 161h170v14H73z" fill="#32424f" transform="rotate(-13 158 168)"/>
+  <circle cx="235" cy="136" r="15" fill="#151a22"/>
+  <path d="M104 173c0-50 39-88 87-88s80 37 80 89v54c0 66-38 116-87 116s-80-50-80-116z" fill="#171016"/>
+  <path d="M126 184c0-37 27-65 63-65s61 28 61 65v34c0 48-27 86-62 86s-62-38-62-86z" fill="#f1b58f"/>
+  <path d="M116 189c20-53 66-79 132-45 2-35-27-70-61-70-44 0-78 35-78 86z" fill="#111014"/>
+  <path d="M139 206c11 8 24 8 35 0" fill="none" stroke="#3a1d24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M199 206c10 8 24 8 34 0" fill="none" stroke="#3a1d24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M170 252c14 10 34 10 49 0" fill="none" stroke="#923348" stroke-width="5" stroke-linecap="round"/>
+  <path d="M122 315h135l29 165H89z" fill="#111820"/>
+  <path d="M149 315h80l22 165H127z" fill="#f2f7fb"/>
+  <path d="M126 315h132v54H126z" fill="#1f3c68"/>
+  <path d="M127 368h130v12H127z" fill="#c72545"/>
+  <path d="M189 321l-29 159h63z" fill="#c72545"/>
+  <path d="M124 336 54 448l43 32 64-145z" fill="#111820"/>
+  <path d="M256 337 302 480h-51l-32-145z" fill="#111820"/>
+  <path d="M86 134c40-66 141-69 182-3-11-80-162-89-182 3z" fill="#07090d"/>
+  <path d="M62 452h226v28H62z" fill="#080b10" opacity=".7"/>
+</svg>

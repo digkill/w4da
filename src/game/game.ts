@@ -40,6 +40,7 @@ import type {
   SpeechBubble,
   SpeakingBubble,
 } from "./types";
+import type { HeroId } from "@/data/heroes";
 import skyUrl from "../assets/skybox/textures/Stylized_FieldAtNight_Panorama_002.png?url";
 import floorUrl from "../assets/floor_material.glb?url";
 
@@ -393,7 +394,9 @@ export class Game {
     this.engine.resize();
   }
 
-  start() {
+  start(heroId: HeroId) {
+    this.player.setHero(heroId);
+    this.resetState();
     this.status = "playing";
     playSfx(this.hissSfx); // aggressive zombie hiss as the horde begins
     this.emit();
@@ -460,6 +463,7 @@ export class Game {
     if (this.status !== "playing") return;
     this.health = Math.max(0, this.health - dmg);
     this.hurtFlash = 1;
+    this.player.playHitReaction();
     if (this.health <= 0) {
       this.status = "dead";
       this.deadTimer = 0;
@@ -492,7 +496,13 @@ export class Game {
 
       this.mana = Math.min(MAX_MANA, this.mana + MANA_REGEN * dt);
       const target = this.zombies.nearestTo(this.player.position);
-      this.player.update(dt, worldMove, target, this.bullets);
+      this.player.update(
+        dt,
+        worldMove,
+        target,
+        this.bullets,
+        (point, radius, dmg) => this.zombies.damageArea(point, radius, dmg),
+      );
 
       this.bullets.update(dt);
       this.bullets.forEachActive((pos, dmg, kill) => {

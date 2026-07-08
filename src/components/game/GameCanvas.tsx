@@ -76,7 +76,7 @@ export function GameCanvas() {
 
       <HUD
         stats={stats}
-        onStart={() => gameRef.current?.start()}
+        onStart={(heroId) => gameRef.current?.start(heroId)}
         onRestart={() => gameRef.current?.restart()}
         onResume={() => gameRef.current?.togglePause()}
         onPause={() => gameRef.current?.togglePause()}

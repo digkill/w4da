@@ -8,3 +8,7 @@ dist-ssr
 *.log
 
 *.tsbuildinfo
+
+# Rust worker
+server/target
+server/.env
